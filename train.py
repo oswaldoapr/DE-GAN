@@ -17,8 +17,8 @@ input_size = (256,256,1)
 
 def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
     
-    list_deg_images= os.listdir('data/A/')
-    list_clean_images= os.listdir('data/A/')
+    list_deg_images= os.listdir('data/train/scanned/')
+    list_clean_images= os.listdir('data/train/scanned/')
     
     list_deg_images.sort()
     list_clean_images.sort()
@@ -32,14 +32,14 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
             
 
 
-            deg_image_path = ('data/A/'+list_deg_images[im])
+            deg_image_path = ('data/train/scanned/'+list_deg_images[im])
             deg_image = Image.open(deg_image_path)# /255.0
             deg_image = deg_image.convert('L')
             deg_image.save('curr_deg_image.png')
 
             deg_image = plt.imread('curr_deg_image.png')
 
-            clean_image_path = ('data/B/'+list_clean_images[im])
+            clean_image_path = ('data/train/ground_truth/'+list_clean_images[im])
             clean_image = Image.open(clean_image_path)# /255.0
             clean_image = clean_image.convert('L')
             clean_image.save('curr_clean_image.png')
@@ -72,10 +72,12 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
 
                 discriminator.trainable = False
                 gan.train_on_batch([b_wat_batch], [valid, b_gt_batch])
-        if not os.path.exists('./last_trained_weights'):
-            os.makedirs('./last_trained_weights')
-            discriminator.save_weights('./last_trained_weights/last_discriminator_weights.h5')
-            generator.save_weights('./last_trained_weights/last_generator_weights.h5')
+
+        epoch_weights_path = f'trained_weights/epoch_{e}'
+        if not os.path.exists(epoch_weights_path):
+            os.makedirs(epoch_weights_path)
+        discriminator.save_weights(f'{epoch_weights_path}/discriminator.weights.h5')
+        generator.save_weights(f'{epoch_weights_path}/generator.weights.h5')
         # if (e == 1 or e % 2 == 0):
         #     evaluate(generator,discriminator,e)
     
@@ -150,4 +152,4 @@ discriminator = discriminator_model()
 
 ###############################################
 
-train_gan(generator,discriminator, ep_start =epo, epochs=80, batch_size=1)
+train_gan(generator,discriminator, ep_start =epo, epochs=3, batch_size=16)

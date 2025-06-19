@@ -14,7 +14,7 @@ from tensorflow.keras.optimizers import *
 
 
 def get_optimizer():
-    return Adam(lr=1e-4)
+    return Adam(learning_rate=1e-4)
 
 def generator_model(pretrained_weights = None,input_size = (256,256,1),biggest_layer = 512):
     
@@ -108,6 +108,7 @@ def get_gan_network(discriminator, generator, input_size = (256,256,1)):
     x = generator(gan_input2)
     valid = discriminator([x,gan_input2])
     gan = Model(inputs=[gan_input2], outputs=[valid,x])
-    gan.compile(loss=['mse','binary_crossentropy'],loss_weights=[1, 100], optimizer=get_optimizer(),metrics = ['accuracy'])
+    gan.compile(loss=['mse','binary_crossentropy'],loss_weights=[1, 100], optimizer=get_optimizer(),
+                metrics = ['accuracy', None])
     return gan
 
