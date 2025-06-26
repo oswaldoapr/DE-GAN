@@ -109,6 +109,6 @@ def get_gan_network(discriminator, generator, input_size = (256,256,1)):
     valid = discriminator([x,gan_input2])
     gan = Model(inputs=[gan_input2], outputs=[valid,x])
     gan.compile(loss=['mse','binary_crossentropy'],loss_weights=[1, 100], optimizer=get_optimizer(),
-                metrics = ['accuracy', None])
+                metrics = [['accuracy'], [None]])
     return gan
 

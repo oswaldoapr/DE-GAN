@@ -9,21 +9,38 @@ import os.path
 import imageio
 from utils import *
 from models.models import *
+import tensorflow as tf
 
 
 input_size = (256,256,1)
 
+SCANNED_PATH = "data/train/scanned/"
+GROUND_TRUTH_PATH = "data/train/ground_truth/"
 
 
 def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
     
-    list_deg_images= os.listdir('data/train/scanned/')
-    list_clean_images= os.listdir('data/train/scanned/')
+    list_deg_images= [f for f in os.listdir(SCANNED_PATH) if f.endswith(".png")]
+    list_clean_images= [f for f in os.listdir(SCANNED_PATH) if f.endswith(".png")]
     
     list_deg_images.sort()
     list_clean_images.sort()
 
     gan = get_gan_network(discriminator, generator)
+
+    # TensorBoard setup
+    log_dir = "logs/gan_training"
+    discriminator_log_dir = os.path.join(log_dir, "discriminator")
+    generator_log_dir = os.path.join(log_dir, "generator")
+
+    os.makedirs(discriminator_log_dir, exist_ok=True)
+    os.makedirs(generator_log_dir, exist_ok=True)
+
+    # Summary writers for TensorBoard
+    discriminator_writer = tf.summary.create_file_writer(discriminator_log_dir)
+    generator_writer = tf.summary.create_file_writer(generator_log_dir)
+
+    global_step = 0
     
     for e in range(ep_start, epochs+1):
         print ('\n Epoch:' ,e)
@@ -32,14 +49,14 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
             
 
 
-            deg_image_path = ('data/train/scanned/'+list_deg_images[im])
+            deg_image_path = (SCANNED_PATH+list_deg_images[im])
             deg_image = Image.open(deg_image_path)# /255.0
             deg_image = deg_image.convert('L')
             deg_image.save('curr_deg_image.png')
 
             deg_image = plt.imread('curr_deg_image.png')
 
-            clean_image_path = ('data/train/ground_truth/'+list_clean_images[im])
+            clean_image_path = (GROUND_TRUTH_PATH+list_clean_images[im])
             clean_image = Image.open(clean_image_path)# /255.0
             clean_image = clean_image.convert('L')
             clean_image.save('curr_clean_image.png')
@@ -66,12 +83,32 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
                 fake = np.zeros((b_gt_batch.shape[0],) + (16, 16, 1))
     
                 discriminator.trainable = True          
-                discriminator.train_on_batch([b_gt_batch, b_wat_batch], valid)
-                discriminator.train_on_batch([generated_images, b_wat_batch], fake)
+                d_loss_real, d_acc_real = discriminator.train_on_batch([b_gt_batch, b_wat_batch], valid)
+                d_loss_fake, d_acc_fake = discriminator.train_on_batch([generated_images, b_wat_batch], fake)
 
+                d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+                d_acc = 0.5 * np.add(d_acc_real, d_acc_fake)
+
+                # Log discriminator loss to TensorBoard
+                with discriminator_writer.as_default():
+                    tf.summary.scalar('d_loss', d_loss, step=global_step)
+                    tf.summary.scalar('d_accuracy', d_acc, step=global_step)
 
                 discriminator.trainable = False
-                gan.train_on_batch([b_wat_batch], [valid, b_gt_batch])
+                g_loss = gan.train_on_batch([b_wat_batch], [valid, b_gt_batch])
+
+                # Log generator loss to TensorBoard (g_loss is a list: [total_loss, mse_loss_disc_output, bce_loss_generator_output, acc_disc_output, acc_generator_output])
+                with generator_writer.as_default():
+                    tf.summary.scalar('g_total_loss', g_loss[0], step=global_step)
+                    tf.summary.scalar('g_disc_output_loss', g_loss[1], step=global_step)
+                    tf.summary.scalar('g_image_loss', g_loss[2], step=global_step)
+                    tf.summary.scalar('g_disc_output_accuracy', g_loss[3], step=global_step) # This is the accuracy of the discriminator on generator output when generator tries to fool it.
+
+                global_step += 1
+
+                if b % 10 == 0:  # Print every 10 batches
+                    print(
+                        f"  Batch {b}/{batch_count} | D Loss: {d_loss:.4f} (Acc: {d_acc:.4f}) | G Loss: {g_loss[0]:.4f} (Disc Acc: {g_loss[3]:.4f})")
 
         epoch_weights_path = f'trained_weights/epoch_{e}'
         if not os.path.exists(epoch_weights_path):
@@ -152,4 +189,4 @@ discriminator = discriminator_model()
 
 ###############################################
 
-train_gan(generator,discriminator, ep_start =epo, epochs=3, batch_size=16)
+train_gan(generator,discriminator, ep_start =epo, epochs=5, batch_size=1)
