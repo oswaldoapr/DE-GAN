@@ -181,12 +181,13 @@ discriminator = discriminator_model()
 
 
 ### to  load pretrained models  ################"" 
-# epo = 41
-
-# generator.load_weights("Results/epoch"+str(epo-1)+"/weights/generator_weights.h5")
-# discriminator.load_weights("Results/epoch"+str(epo-1)+"/weights/discriminator_weights.h5")
+# epo = 39
+#
+# epoch_weights_path = f'trained_weights/epoch_{epo-1}'
+# generator.load_weights(f"{epoch_weights_path}/generator.weights.h5")
+# discriminator.load_weights(f"{epoch_weights_path}/discriminator.weights.h5")
 
 
 ###############################################
 
-train_gan(generator,discriminator, ep_start =epo, epochs=5, batch_size=1)
+train_gan(generator,discriminator, ep_start =epo, epochs=100, batch_size=1)
