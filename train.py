@@ -41,9 +41,10 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
     generator_writer = tf.summary.create_file_writer(generator_log_dir)
 
     global_step = 0
-    
+    last_g_loss_epoch = np.inf
     for e in range(ep_start, epochs+1):
         print ('\n Epoch:' ,e)
+        g_loss_epoch = 0
         
         for im in tqdm(range (len(list_deg_images))):
             
@@ -70,7 +71,7 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
 
 
 
-
+            g_loss_batch = 0
             for b in (range(batch_count)):
                 seed= range(b*batch_size, (b*batch_size) + batch_size)
                 b_wat_batch = wat_batch[seed].reshape(batch_size,256,256,1)
@@ -110,11 +111,21 @@ def train_gan(generator,discriminator, ep_start=1, epochs=1, batch_size=128):
                     print(
                         f"  Batch {b}/{batch_count} | D Loss: {d_loss:.4f} (Acc: {d_acc:.4f}) | G Loss: {g_loss[0]:.4f} (Disc Acc: {g_loss[3]:.4f})")
 
-        epoch_weights_path = f'trained_weights/epoch_{e}'
-        if not os.path.exists(epoch_weights_path):
-            os.makedirs(epoch_weights_path)
-        discriminator.save_weights(f'{epoch_weights_path}/discriminator.weights.h5')
-        generator.save_weights(f'{epoch_weights_path}/generator.weights.h5')
+                g_loss_batch += g_loss[0]
+
+            g_loss_batch /= batch_count
+            g_loss_epoch += g_loss_batch
+        g_loss_epoch /= len(list_deg_images)
+
+        if g_loss_epoch < last_g_loss_epoch:
+            epoch_weights_path = f'trained_weights/epoch_{e}'
+            if not os.path.exists(epoch_weights_path):
+                os.makedirs(epoch_weights_path)
+
+            discriminator.save_weights(f'{epoch_weights_path}/discriminator.weights.h5')
+            generator.save_weights(f'{epoch_weights_path}/generator.weights.h5')
+
+            last_g_loss_epoch = g_loss_epoch
         # if (e == 1 or e % 2 == 0):
         #     evaluate(generator,discriminator,e)
     
